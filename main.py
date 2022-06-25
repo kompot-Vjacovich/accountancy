@@ -1,22 +1,23 @@
 import pandas as pd
 import PySimpleGUI as sg
 
-from layouts import MAIN_COLUMN
+from layouts import main_column, price_element
 
 
 class App:
-    def __init__(self):
-        self.layout = [[MAIN_COLUMN], [sg.Text('asdad', key='a')]]
-        self.file = None
+    def __init__(self, file=None):
+        self.layout = [[main_column()], [sg.Button('Result', key='_save_')]]
+        self.file = file
 
-        self.window = sg.Window('My new window', self.layout)
+        self.window = sg.Window('Заполнение отчёта', self.layout)
 
     def open_file(self):
-        filename = sg.popup_get_file(
-            message='Выберите файл с товарами',
-            title='Загрузка товаров',
-            file_types=(('Книга Excel', '*.xlsx'),) + sg.FILE_TYPES_ALL_FILES
-        )
+        # filename = sg.popup_get_file(
+        #     message='Выберите файл с товарами',
+        #     title='Загрузка товаров',
+        #     file_types=(('Книга Excel', '*.xlsx'),) + sg.FILE_TYPES_ALL_FILES
+        # )
+        filename = 'D:/Projects/accountancy/test.xlsx'
         if not filename:
             return False
         try:
@@ -26,24 +27,41 @@ class App:
             self.file = None
             self.run()
         else:
-            self.window.read(timeout=10)
-            self.window['_supplier_'].update(value='1', values=['1', '2', '3'])
+            self.fill_report()
             return True
 
-    def run(self):
-        # work = True
-        work = self.open_file()
+    def fill_report(self):
+        self.window.read(timeout=10)
+        self.window['_supplier_'].update(
+            values=list(self.file['Поставщик'].unique()))
 
-        while work:
-            event, values = self.window.read()
-            if event in (sg.WIN_CLOSED, 'Exit'):
-                break
-
-        self.window.close()
+    def run(self, event, values):
+        if event == '_supplier_':
+            self.window['_item_'].update(
+                values=list(
+                    self.file['Товар'][self.file['Поставщик'] == values[
+                        '_supplier_']].unique()),
+                disabled=False
+            )
+        elif event == '_add_calendar_':
+            self.window.extend_layout(
+                self.window['Цена в закупке'],
+                price_element('Цена в закупке', 1)
+            )
 
 
 if __name__ == '__main__':
     # Create the class
     app = App()
     # run the event loop
-    app.run()
+    work = app.open_file()
+    while work:
+        w_event, w_values = app.window.read()
+        if w_event in (sg.WIN_CLOSED, 'Exit'):
+            break
+
+        if w_event in ('_next_', '_save_'):
+            print(w_values)
+        app.run(w_event, w_values)
+
+    app.window.close()
